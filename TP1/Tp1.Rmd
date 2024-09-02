@@ -1,0 +1,28 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+Primero cargamos las librerias necesarias: 
+
+```{r}
+library(wooldridge);
+library(quantreg);
+#library(readxl); para leer archivos xml, pero vamos a usar el paquete eph
+library(eph);
+```
+
+```{r}
+base2024 <- get_microdata(year = 2024)
+base2024 <- base2024[base2024$P21>0 &      ## asalariadas
+                     base2024$CH03 == 01 & ## jefes de hogar
+                     base2024$CH04 == 1 &  ## varones
+                     25 <= base2024$CH06 & ## edades
+                     base2024$CH06<= 65]
+#1a
+reg<-lm(log(P21) ~ as.factor(CH12)+as.factor(CH07)+as.factor(CH06)+as.factor(AGLOMERADO)-1,data=base2024)
+summary(reg)
+```
+
