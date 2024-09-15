@@ -8,48 +8,58 @@ Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by press
 Primero cargamos las librerias necesarias: 
 
 ```{r}
-library(wooldridge);
+#library(wooldridge);
 library(quantreg);
-#library(readxl); para leer archivos xml, pero vamos a usar el paquete eph
-library(eph);
+library(readxl); # para leer archivos xml, pero vamos a usar el paquete eph
+#library(eph);
+library(dplyr);
+library(ggplot2)
 ```
 
 ```{r}
-library(wooldridge);
-library(quantreg);
-#library(readxl); para leer archivos xml, pero vamos a usar el paquete eph
-library(eph);
-library(dplyr);
+#base2024 <- get_microdata(year = 2024) # para leer usando el paquete eph 
+base2024 <- read_excel('EPH_usu_1er_Trim_2024_xlsx/usu_individual_T124.xlsx')
 
-base2024 <- get_microdata(year = 2024)
 base2024 <- base2024[base2024$P21>0 &      ## asalariados
                        base2024$CH03 == 01 & ## jefes de hogar
                        base2024$CH04 == 1 &  ## varones
                        25 <= base2024$CH06 & ## edades
                        base2024$CH06 <= 65,]
 #1.a
-previo    <- c(0, 0, 6, 6, 9, 12, 12, 18)
-posterior <- c(0, 6, 9, 12, 12, 15, 18, 22)
+anios_prev <- c(0, 0, 6, 6, 9, 12, 12, 18)
+anios_post <- c(0, 6, 9, 12, 12, 15, 18, 22)
 
 base2 <- base2024 %>%
   mutate(
     # Asignar el número de años en base al nivel de educación y condición de finalización
     anios_ed = ifelse(CH13 == 1,
-                      posterior[CH12 + 1],  # +1 para ajustar al índice en R
-                      previo[CH12 + 1] + as.numeric(CH14)),
+                      anios_post[CH12 + 1],  # +1 para ajustar al índice en R
+                      anios_prev[CH12 + 1] + as.numeric(CH14)),
     
     # Calcular el potencial esperado y su cuadrado
     pot_exp = CH06 - anios_ed - 6,
     pot_exp_2 = pot_exp^2
   )
-base2 <- base2[complete.cases(base2[, c("pot_exp")]), ]
-lm(log(P21) ~ as.factor(CH12)+as.factor(CH07)+as.factor(CH06)+as.factor(AGLOMERADO)-1,data=base2024)
-reg <- lm(log(P21) ~ anios_ed+pot_exp+pot_exp_2+as.factor(AGLOMERADO)+as.factor(CH07), data=base2)
-rq <- rq(log(P21) ~ anios_ed + pot_exp + pot_exp_2 + as.factor(AGLOMERADO) + as.factor(CH07),data=base2,tau = .5,ci = FALSE)
-summary(reg)
 
+base2 <- base2[complete.cases(base2[, c("pot_exp")]), ] # nos quitamos los na's.
 
-plot(summary(rq,se="ker"))
+#lm(log(P21) ~ as.factor(CH12)+as.factor(CH07)+as.factor(CH06)+as.factor(AGLOMERADO)-1,data=base2024)
+reg1 <- lm(log(P21) ~ anios_ed+pot_exp+pot_exp_2+as.factor(AGLOMERADO)+as.factor(CH07), data=base2)
+summary(reg1)
+plot(reg1)
+
+regq1 <- rq(log(P21) ~ anios_ed + pot_exp + pot_exp_2 + as.factor(AGLOMERADO) + as.factor(CH07),data=base2,tau =1:9/10,ci = FALSE)
+summregq1 <- summary(regq1,se="ker")
+plot(summregq1,parm=2)
+
+regq2 <- rq(log(P21) ~ anios_ed + pot_exp + pot_exp_2, data=base2, tau=1:9/10)
+summregq2 <- summary(regq2,se='ker')
+plot(summregq2)
+
+regq3 <- rq(log(P21) ~ as.factor(CH12), data=base2,tau=1:9/10) # nivel eduacion CH12
+summregq3 <- summary(regq3,se='ker')
+plot(summregq3,)
+
 # plot.summary.rqs 
 ```
 
