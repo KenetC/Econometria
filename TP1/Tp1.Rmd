@@ -44,22 +44,53 @@ base2 <- base2024 %>%
 base2 <- base2[complete.cases(base2[, c("pot_exp")]), ] # nos quitamos los na's.
 
 #lm(log(P21) ~ as.factor(CH12)+as.factor(CH07)+as.factor(CH06)+as.factor(AGLOMERADO)-1,data=base2024)
-reg1 <- lm(log(P21) ~ anios_ed+pot_exp+pot_exp_2+as.factor(AGLOMERADO)+as.factor(CH07), data=base2)
-summary(reg1)
-plot(reg1)
+#reg1 <- lm(log(P21) ~ anios_ed+pot_exp+pot_exp_2+as.factor(AGLOMERADO)+as.factor(CH07), data=base2)
+#summary(reg1)
+#plot(reg1)
 
-regq1 <- rq(log(P21) ~ anios_ed + pot_exp + pot_exp_2 + as.factor(AGLOMERADO) + as.factor(CH07),data=base2,tau =1:9/10,ci = FALSE)
-summregq1 <- summary(regq1,se="ker")
-plot(summregq1,parm=2)
+#regq1 <- rq(log(P21) ~ anios_ed + pot_exp + pot_exp_2 + as.factor(AGLOMERADO) + as.factor(CH07),data=base2,tau =1:9/10,ci = FALSE)
+#summregq1 <- summary(regq1,se="ker")
+#plot(summregq1,parm=2)
 
-regq2 <- rq(log(P21) ~ anios_ed + pot_exp + pot_exp_2, data=base2, tau=1:9/10)
-summregq2 <- summary(regq2,se='ker')
-plot(summregq2)
+#regq2 <- rq(log(P21) ~ anios_ed + pot_exp + pot_exp_2, data=base2, tau=1:9/10)
+#summregq2 <- summary(regq2,se='ker')
+#plot(summregq2)
 
-regq3 <- rq(log(P21) ~ as.factor(CH12), data=base2,tau=1:9/10) # nivel eduacion CH12
-summregq3 <- summary(regq3,se='ker')
-plot(summregq3,)
+#regq3 <- rq(log(P21) ~ as.factor(CH12), data=base2,tau=1:9/10) # nivel eduacion CH12
+#summregq3 <- summary(regq3,se='ker')
+# plot(summregq3)
 
 # plot.summary.rqs 
+
+
+taus <- c(0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9)
+
+# Correr regresiones cuantil para cada tau
+resultados <- lapply(taus, function(tau) {
+  rq(log(P21) ~ anios_ed + pot_exp + pot_exp_2 + as.factor(AGLOMERADO) + as.factor(CH07),
+     data = base2, tau = tau)
+})
+
+# Extraer los coeficientes e intervalos de confianza
+coeficientes <- do.call(rbind, lapply(resultados, function(modelo) {
+  coef(summary(modelo, se = "ker", R = 1000))[, 1] # coef, se, lower, upper
+}))
+
+# Crear un dataframe con los coeficientes para los gráficos
+coef_df <- data.frame(
+  tau = rep(taus, each = ncol(coef(resultados[[1]]))),
+  variable = rep(names(coef(resultados[[1]])), length(taus)),
+  coef = coeficientes[, 1],
+  #lower = coeficientes[, 3],
+  #upper = coeficientes[, 4]
+)
+
+ggplot(coef_df %>% filter(variable == "anios_ed"), aes(x = tau, y = coef)) +
+  geom_line() +
+  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.2) +
+  labs(title = "Coeficiente de 'Años de educación' por Cuantiles",
+       x = "Cuantiles",
+       y = "Coeficiente") +
+  theme_minimal()
 ```
 
