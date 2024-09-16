@@ -63,34 +63,35 @@ base2 <- base2[complete.cases(base2[, c("pot_exp")]), ] # nos quitamos los na's.
 # plot.summary.rqs 
 
 
-taus <- c(0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9)
+taus <- 1:9/10
 
 # Correr regresiones cuantil para cada tau
 resultados <- lapply(taus, function(tau) {
-  rq(log(P21) ~ anios_ed + pot_exp + pot_exp_2 + as.factor(AGLOMERADO) + as.factor(CH07),
-     data = base2, tau = tau)
+  rq(log(P21) ~ anios_ed + pot_exp + pot_exp_2 + as.factor(AGLOMERADO) + as.factor(CH07), data = base2, tau = tau)
 })
 
-# Extraer los coeficientes e intervalos de confianza
-coeficientes <- do.call(rbind, lapply(resultados, function(modelo) {
-  coef(summary(modelo, se = "ker", R = 1000))[, 1] # coef, se, lower, upper
+resultados_summary <- lapply(resultados, function(modelo) {
+  summary(modelo, se = "boot", R = 10)  # R=1000 usa 1000 réplicas de bootstrap
+})
+
+coeficientes <- do.call(rbind, lapply(resultados_summary, function(summ) {
+  coef_table <- coef(summ)[c(1,2,3),c(1,2)]  # Tabla de coeficientes
+  cbind(coef_table[, 1][[1]],  # Coeficientes
+        coef_table[, 1][[1]] - 1.96 * coef_table[, 2],  # Límite inferior (95% CI)
+        coef_table[, 1][[1]] + 1.96 * coef_table[, 2])  # Límite superior (95% CI)
 }))
 
-# Crear un dataframe con los coeficientes para los gráficos
-coef_df <- data.frame(
-  tau = rep(taus, each = ncol(coef(resultados[[1]]))),
-  variable = rep(names(coef(resultados[[1]])), length(taus)),
-  coef = coeficientes[, 1],
-  #lower = coeficientes[, 3],
-  #upper = coeficientes[, 4]
-)
+# Convertir a data frame para facilitar el trabajo
+coef_df <- as.data.frame(coeficientes)
+colnames(coef_df) <- c("Coef", "Lower", "Upper")
+coef_df$tau <- taus  # Añadir los cuantiles (tau) TENER CUIDADO
 
-ggplot(coef_df %>% filter(variable == "anios_ed"), aes(x = tau, y = coef)) +
-  geom_line() +
-  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.2) +
-  labs(title = "Coeficiente de 'Años de educación' por Cuantiles",
-       x = "Cuantiles",
-       y = "Coeficiente") +
+ggplot(coef_df %>% filter(variable == "anios_ed"), aes(x = tau, y = Coef)) +
+  geom_line() +  # Línea de los coeficientes
+  geom_ribbon(aes(ymin = Lower, ymax = Upper), alpha = 0.2) +  # Intervalos de confianza
+  labs(x = "Cuantil (tau)", y = "Coeficiente de anios_ed", 
+       title = "Coeficientes de la Regresión Cuantil y sus Intervalos de Confianza") +
   theme_minimal()
+
 ```
 
