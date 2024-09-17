@@ -63,13 +63,39 @@ print(summreq1)
 plot(reg1)
 ```
 
+### Intervalo de confianza de beta1 anios_ed 
+
 ```{r}
-confint(reg1)
+confint(reg1)[2,] 
 ```
 
+### Graficos: 
+
+```{r}
+coef_df <- data.frame(estimate = coef(reg1)["anios_ed"], confint_lower = confint(reg1)["anios_ed", 1], confint_upper = confint(reg1)["anios_ed", 2])
+
+ggplot(coef_df, aes(x = "anios_ed", y = estimate)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = confint_lower, ymax = confint_upper), width = 0.2) +
+  labs(title = "Efecto de la Educación sobre el Logaritmo de los Ingresos", y = "Coeficiente (anios_ed)", x = "Años de educación")
+
+```
+
+## Encontramos que hay heterogeneidad en los retornos a la educacion. 
+
+```{r}
+regq1 <- rq(log(P21) ~ anios_ed + pot_exp + pot_exp_2 + as.factor(AGLOMERADO) + as.factor(CH07),data=base2,tau =1:9/10,ci = FALSE)
+summregq1 <- summary(regq1,se="ker")
+plot(summregq1,parm=2) # con param =2 le decimos que queremos el grafico de valores e intervalos de confianza de años de educacion. 
+```
+
+Para valores mas cercanos a tau = 0, obtenemos que el coeficiente de años_ed es mas alto, pues tenemos que el efecto marginal de esta variable hace que sea mas influyente tener mas años de educacion, lo cual tiene sentido pues estamos para el caso Y = log(ingresos) bajos, vemos que se va disminuyendo para valores de tau cercanos a 0.5 pues este efecto se va asiendo mas irrelevante, en cambio para valores cercanos a 1, entiendo que para los que tienen ingresos superiores a la problacion parece ser determinante los años de educacion. 
 
 
 
+Yendo a la pregunta del 1.b parece ser que los que se benefician mas son los que tienen ingresos altos y bajos, sin embargo los que tienen ingresos medios en comparacion con los antes mencionados no tiene tanta influencia un año mas de educacion.
 
+
+La comparacion grafica que veo es que al usar el modelo de regresion lineal estamos calculando la media de la log de los ingresos y estamos sesgados sobre la interpretacion del coeficiente, y como en este modelo no presenta dicho sesgo, podemos dar mas interpretabilidad de dicho coeficiente.
 
 

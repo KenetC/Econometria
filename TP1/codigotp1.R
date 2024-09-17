@@ -98,26 +98,3 @@ ggplot(df, aes(x = tau, y = value)) +
   ylim(min(df$v_inf) - 0.05, max(df$v_sup) + 0.05)
 theme_minimal()
 
-
-
-set.seed(123)
-n <- 100
-x <- rnorm(n)
-y <- x + rnorm(n)
-tau <- c(0.1, 0.5, 0.9)
-
-# Ajustar modelos de regresión cuantílica para diferentes cuantiles
-models <- lapply(tau, function(t) {
-  rq(y ~ x, tau = t)
-})
-
-# Obtener resúmenes de los modelos
-summaries <- lapply(models, function(mod){
-  summary(mod,se = "ker")
-})
-
-# Graficar usando plot.summary.rqs
-plot(summary(models[[1]], se = "ker"))  # Visualizar el primer resumen como ejemplo
-
-# Para visualizar todos los resúmenes, puedes usar lapply para aplicar plot a cada resumen
-lapply(summaries, plot)
