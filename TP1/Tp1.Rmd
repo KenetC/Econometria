@@ -110,3 +110,14 @@ De manera similar, para los individuos en los cuantiles altos de la distribució
 La comparacion grafica que veo es que al usar el modelo de regresion lineal estamos calculando la media de la log de los ingresos y estamos sesgados sobre la interpretacion del coeficiente, y como en este modelo no presenta dicho sesgo, podemos dar mas interpretabilidad del mismo.
 
 
+```{r}
+summregq2 <- summary(regq1,se="boot",R=100)
+plot(summregq2,parm=2,main ="Coeficientes: Años de educación",xlab ="tau's",ylab = "coef ")
+```
+
+```{r}
+summregq3 <- summary(regq1,se="iid")
+plot(summregq3,parm=2,main ="Coeficientes: Años de educación",xlab ="tau's",ylab = "coef ")
+```
+
+Habia dicidido no mostrar con los otros metodos (iid boot) por que no vi cambios significativos.w
