@@ -1,14 +1,11 @@
 # Econometria
 
+Rstudio trik 
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
 #### Preguntas
 
 * Hay personas que tienen anios_ed que no tienen sentido, mayores de 100 -> supongo que los quitamos del dataset. 
+Son los valores donde CH14 cual fue el ultimo anio que aprobo -> educacion especial Ns/Nr 
 
-* Concluciones para el modelo de regresion lineal: 
-- es estadisticamente significativo? 
-- magnitud del efecto. 
-- la no inclucion del valor nulo quiere decir que tiene cierto nivel de significancia. 
-
-* Luego se debe extender el analisis ya que se encuentra heterogeneidad pues el efecto varia a lo largo de la distribucion de ingresos.
-
-* 
+* error desing singular matrix -> indica que la matriz de disenio no puede invertirse debido a la inclucion de as.factor(edades)

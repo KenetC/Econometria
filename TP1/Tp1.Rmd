@@ -2,23 +2,28 @@
 title: "R Notebook"
 output: html_notebook
 ---
-
-Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+# Trabajo Practico  
 
 Primero cargamos las librerias necesarias: 
 
 ```{r}
 library(quantreg);
-#library(readxl); # para leer archivos xml, pero vamos a usar el paquete eph
-library(eph);
+library(readxl); # para leer archivos xml, pero vamos a usar el paquete eph
+#library(eph);
 library(dplyr);
 library(tidyr)
 library(ggplot2)
 ```
 
+### 1.a. 
+
+Hacemos las restricciones, y calculamos la variable anios_educacion en funcion de CH14 (ultimo anio de aprobacion), luego lo mismo para experiencia potencial y su cuadrado. 
+
+Hacemos una limpieza: como quitar los valores de anios_educacion por encima de 100, ya que son valores que provienen de educacion especial o Ns/Nr 
+
 ```{r}
-base2024 <- get_microdata(year = 2024) # para leer usando el paquete eph 
-#base2024 <- read_excel('EPH_usu_1er_Trim_2024_xlsx/usu_individual_T124.xlsx')
+#base2024 <- get_microdata(year = 2024) # para leer usando el paquete eph 
+base2024 <- read_excel('EPH_usu_1er_Trim_2024_xlsx/usu_individual_T124.xlsx')
 
 base2024 <- base2024[base2024$P21>0 &      ## asalariados
                        base2024$CH03 == 01 & ## jefes de hogar
@@ -32,32 +37,35 @@ anios_post <- c(0, 6, 9, 12, 12, 15, 18, 22)
 base2 <- base2024 %>%
   mutate(
     # Asignar el número de años en base al nivel de educación y condición de finalización
-    anios_ed = ifelse(CH13 == 1,
+    anios_educacion = ifelse(CH13 == 1,
                       anios_post[CH12 + 1],  # +1 para ajustar al índice en R
                       anios_prev[CH12 + 1] + as.numeric(CH14)),
     
-    # Calcular el potencial esperado y su cuadrado
-    pot_exp = CH06 - anios_ed - 6,
-    pot_exp_2 = pot_exp^2
+    # Calcular la experiencia potencial y su cuadrado
+    exp_pot = CH06 - anios_educacion - 6,
+    exp_pot_2 = exp_pot^2
   )
 
-base2 <- base2[complete.cases(base2[, c("pot_exp")]), ] # nos quitamos los na's.
-base2 <- base2[! (base2$anios_ed > 100),]
-summary(base2$P21)
+base2 <- base2[complete.cases(base2[, c("exp_pot")]), ] # nos quitamos los na's.
+base2 <- base2[! (base2$anios_educacion > 100),]
 ```
 
 ```{r}
-hist(log(base2$P21))
+hist(log(base2$P21),main = "Histograma lwage",xlab = "log(P21)")
 ```
 
 ```{r}
-plot(base2$anios_ed, log(base2$P21))
+plot(base2$anios_educacion, log(base2$P21),xlab= "Años de educación",ylab = "log(Ingresos)")
 ```
 
-### Hacemos el modelo de regresion lineal.
+### Realizamos el modelo lineal 
+
+AGLOMERADO -> ubicacion 
+CH07 -> estado civil 
+CH06 -> edad 
 
 ```{r}
-reg1 <- lm(log(P21) ~ anios_ed + pot_exp + pot_exp_2 + as.factor(AGLOMERADO) + as.factor(CH07), data=base2)
+reg1 <- lm(log(P21) ~ anios_educacion + exp_pot + exp_pot_2 + as.factor(AGLOMERADO) + as.factor(CH07) + as.factor(CH06), data=base2)
 summreq1 <- summary(reg1)
 print(summreq1)
 plot(reg1)
@@ -69,33 +77,36 @@ plot(reg1)
 confint(reg1)[2,] 
 ```
 
-### Graficos: 
-
 ```{r}
-coef_df <- data.frame(estimate = coef(reg1)["anios_ed"], confint_lower = confint(reg1)["anios_ed", 1], confint_upper = confint(reg1)["anios_ed", 2])
+coef_df <- data.frame(estimate = coef(reg1)["anios_educacion"], confint_lower = confint(reg1)["anios_educacion", 1], confint_upper = confint(reg1)["anios_educacion", 2])
 
-ggplot(coef_df, aes(x = "anios_ed", y = estimate)) +
+ggplot(coef_df, aes(x = "anios_educacion", y = estimate)) +
   geom_point() +
   geom_errorbar(aes(ymin = confint_lower, ymax = confint_upper), width = 0.2) +
-  labs(title = "Efecto de la Educación sobre el Logaritmo de los Ingresos", y = "Coeficiente (anios_ed)", x = "Años de educación")
+  labs(title = "Intervalo de confianza de Años de educación", y = "Coeficiente (Años de educación)")
 
 ```
 
-## Encontramos que hay heterogeneidad en los retornos a la educacion. 
+### 1.b.
+
+El primer cambio respecto al modelo previamente evaluado es que al tener la variable CH06 (edad) codificada con dummys, hace que la matriz de disenio no pueda invertise para luego hacer la regresion por cuantiles, por lo tanto opte por quitar esta variable y obtuve estos resultados:
 
 ```{r}
-regq1 <- rq(log(P21) ~ anios_ed + pot_exp + pot_exp_2 + as.factor(AGLOMERADO) + as.factor(CH07),data=base2,tau =1:9/10,ci = FALSE)
+regq1 <- rq(log(P21) ~ anios_educacion + exp_pot + exp_pot_2 + as.factor(AGLOMERADO) + as.factor(CH07),data=base2,tau = 1:9/10,ci = FALSE)
 summregq1 <- summary(regq1,se="ker")
-plot(summregq1,parm=2) # con param =2 le decimos que queremos el grafico de valores e intervalos de confianza de años de educacion. 
+plot(summregq1,parm=2,main ="Coeficientes: Años de educación",xlab ="tau's",ylab = "coef ") # con param =2 le decimos que queremos el grafico de valores e intervalos de confianza de años de educacion. 
 ```
 
-Para valores mas cercanos a tau = 0, obtenemos que el coeficiente de años_ed es mas alto, pues tenemos que el efecto marginal de esta variable hace que sea mas influyente tener mas años de educacion, lo cual tiene sentido pues estamos para el caso Y = log(ingresos) bajos, vemos que se va disminuyendo para valores de tau cercanos a 0.5 pues este efecto se va asiendo mas irrelevante, en cambio para valores cercanos a 1, entiendo que para los que tienen ingresos superiores a la problacion parece ser determinante los años de educacion. 
+Para cuantiles bajos (τ cercanos a 0.1), el coeficiente de años_ed es más alto, lo que indica que el efecto marginal de la educación es mayor entre las personas con ingresos más bajos. En otras palabras, para este grupo, cada año adicional de educación tiene un impacto más fuerte en el aumento de los ingresos. Esto tiene sentido dado que estos individuos, al tener ingresos relativamente bajos, podrían beneficiarse más de la educación en términos de movilidad económica.
 
+A medida que τ se aproxima a 0.5 (mediana de la distribución), el coeficiente de años_ed disminuye, lo que sugiere que, en la mediana de los ingresos, el impacto de la educación es menos pronunciado. Es decir, el efecto marginal de la educación se atenúa en este grupo, lo cual podría indicar que otros factores además de la educación juegan un rol más importante en la determinación de los ingresos.
 
+Finalmente, para los cuantiles altos (τ cercanos a 0.9), el coeficiente de años_ed vuelve a aumentar, lo que sugiere que, para aquellos con ingresos más altos, la educación sigue siendo un factor determinante. Esto podría reflejar que en los niveles más altos de la distribución de ingresos, los años de educación siguen siendo cruciales para alcanzar los ingresos más elevados, probablemente debido a la acumulación de capital humano especializado o credenciales educativas superiores.
 
-Yendo a la pregunta del 1.b parece ser que los que se benefician mas son los que tienen ingresos altos y bajos, sin embargo los que tienen ingresos medios en comparacion con los antes mencionados no tiene tanta influencia un año mas de educacion.
+Yendo a la pregunta del 1.b
+Para los individuos en los cuantiles bajos, un año adicional de educación tiene un impacto significativo en el aumento de los ingresos, lo que sugiere que la educación es una vía importante para mejorar su situación económica. Esto puede deberse a que un año más de formación amplía sus oportunidades laborales y su potencial de ingresos de manera considerable.
+De manera similar, para los individuos en los cuantiles altos de la distribución (τ cercanos a 0.9), la educación sigue siendo un factor determinante para acceder a los ingresos más elevados. En este grupo, la educación, posiblemente en forma de títulos avanzados o especialización, tiene un impacto considerable en aumentar aún más sus ya altos ingresos.
 
-
-La comparacion grafica que veo es que al usar el modelo de regresion lineal estamos calculando la media de la log de los ingresos y estamos sesgados sobre la interpretacion del coeficiente, y como en este modelo no presenta dicho sesgo, podemos dar mas interpretabilidad de dicho coeficiente.
+La comparacion grafica que veo es que al usar el modelo de regresion lineal estamos calculando la media de la log de los ingresos y estamos sesgados sobre la interpretacion del coeficiente, y como en este modelo no presenta dicho sesgo, podemos dar mas interpretabilidad del mismo.
 
 
