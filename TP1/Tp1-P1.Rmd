@@ -1,9 +1,7 @@
 ---
-title: "R Notebook"
+title: "Trabajo Practico"
 output: html_notebook
 ---
-# Trabajo Practico  
-
 Primero cargamos las librerias necesarias: 
 
 ```{r}
@@ -14,8 +12,9 @@ library(dplyr);
 library(tidyr)
 library(ggplot2)
 ```
+# Pregunta 1
 
-### 1.a. 
+### a. 
 
 Hacemos las restricciones, y calculamos la variable anios_educacion en funcion de CH14 (ultimo anio de aprobacion), luego lo mismo para experiencia potencial y su cuadrado. 
 
@@ -25,37 +24,41 @@ Hacemos una limpieza: como quitar los valores de anios_educacion por encima de 1
 #base2024 <- get_microdata(year = 2024) # para leer usando el paquete eph 
 base2024 <- read_excel('EPH_usu_1er_Trim_2024_xlsx/usu_individual_T124.xlsx')
 
-base2024 <- base2024[base2024$P21>0 &      ## asalariados
+base <- base2024[base2024$P21>0 &      ## asalariados
                        base2024$CH03 == 01 & ## jefes de hogar
                        base2024$CH04 == 1 &  ## varones
                        25 <= base2024$CH06 & ## edades
                        base2024$CH06 <= 65,]
-#1.a
+
+# renombramos las variables que usamos, para mas claridad
+base <-base %>% 
+        rename(wage = P21,  ubicacion = AGLOMERADO, est_civil = CH07, edad = CH06)
+
+# calculamos anios de educacion (anios_edu), experiencia potencial (exp_pot)
 anios_prev <- c(0, 0, 6, 6, 9, 12, 12, 18)
 anios_post <- c(0, 6, 9, 12, 12, 15, 18, 22)
 
-base2 <- base2024 %>%
+base1 <- base %>%
   mutate(
     # Asignar el número de años en base al nivel de educación y condición de finalización
-    anios_educacion = ifelse(CH13 == 1,
+    anios_edu = ifelse(CH13 == 1,
                       anios_post[CH12 + 1],  # +1 para ajustar al índice en R
                       anios_prev[CH12 + 1] + as.numeric(CH14)),
     
     # Calcular la experiencia potencial y su cuadrado
-    exp_pot = CH06 - anios_educacion - 6,
+    exp_pot = edad - anios_edu - 6,
     exp_pot_2 = exp_pot^2
   )
 
-base2 <- base2[complete.cases(base2[, c("exp_pot")]), ] # nos quitamos los na's.
-base2 <- base2[! (base2$anios_educacion > 100),]
+base1 <- base1[complete.cases(base1[, c("exp_pot")]), ] # nos quitamos los na's.
+base1 <- base1[! (base1$anios_edu > 100),]
+```
+```{r}
+hist(log(base1$wage),main = "Histograma lwage",xlab = "log(wage)")
 ```
 
 ```{r}
-hist(log(base2$P21),main = "Histograma lwage",xlab = "log(P21)")
-```
-
-```{r}
-plot(base2$anios_educacion, log(base2$P21),xlab= "Años de educación",ylab = "log(Ingresos)")
+plot(base1$anios_edu, log(base1$wage),xlab= "Años de educación",ylab = "log(Ingresos)")
 ```
 
 ### Realizamos el modelo lineal 
@@ -64,35 +67,85 @@ AGLOMERADO -> ubicacion
 CH07 -> estado civil 
 CH06 -> edad 
 
+##### Modelo 1 
+$$  log(wage) = \text{anios_ed} + \text{exp_pot} + \text{exp_pot}^2 + ubicacion (dummie) + \text{estado_civil} + edad $$
+
+##### Modelo 2
+$$  log(wage) = educacion (dummie) + \text{exp_pot} + \text{exp_pot}^2 + ubicacion (dummie) + \text{estado_civil} + edad $$
 ```{r}
-reg1 <- lm(log(P21) ~ anios_educacion + exp_pot + exp_pot_2 + as.factor(AGLOMERADO) + as.factor(CH07) + as.factor(CH06), data=base2)
-summreq1 <- summary(reg1)
-print(summreq1)
-plot(reg1)
+reg1 <- lm(log(wage)~ anios_edu + exp_pot + exp_pot_2 + edad + as.factor(ubicacion) + as.factor(est_civil), data=base1)
+reg2 <- lm(log(wage)~ as.factor(NIVEL_ED) + exp_pot + exp_pot_2 + edad + as.factor(ubicacion) + as.factor(est_civil), data=base1)
+
+summ_reg1 <- summary(reg1)
+summ_reg2 <- summary(reg2)
+
+# Extraer los coeficientes, errores estándar, valores t y p-valores del resumen del modelo
+coef_reg1 <- coef(summ_reg1)
+coef_reg2 <- coef(summ_reg2)
+
+# Filtrar las filas de los coeficientes que te interesan
+coef_interes_reg1 <- coef_reg1[c("anios_edu", "exp_pot"), ]
+coef_interes_reg2 <- coef_reg2[grep("NIVEL_ED", rownames(coef_reg2)), ] 
+```
+```{r}
+x <- c("Primario completo","Secundario incompleto","Secundario completo","Universitario incompleto","Universitario completo","Sin instruccion")
+y <- coef_interes_reg2[,1]
+pv <- coef_interes_reg2[,4]
+# Crear el gráfico base
+plot(1:length(x), y, type = "b", pch = 19, col = "blue", xaxt = "n", 
+     xlab = "", ylab = "Coeficiente estimado", 
+     xlim = c(0, length(x) + 1),
+     main = "Efecto del Nivel Educativo sobre lwage")
+
+# Añadir las etiquetas del eje X
+axis(1, at = 1:length(x), labels = x, las = 2)
+
+# Añadir una línea horizontal en y = 0 para referencia
+abline(h = 0, col = "red", lty = 2)
+
+# Filtrar los valores válidos para evitar NA en los p-valores
+valid_indices <- which(!is.na(y))
+
+# Añadir los p-valores junto a sus respectivos puntos en el gráfico
+text(valid_indices, y[valid_indices], 
+     labels = paste("p-valor",format(pv[valid_indices], digits = 2)), 
+     pos = 4, cex = 0.8, col = "darkgreen")
+```
+La variación considerable en los coeficientes de las variables dummie *NIVEL_ED* sugiere que el efecto en el logaritmo de los salarios (*log(wage)*) de cada nivel educativo no es constante. Es decir parece haber un efecto no lineal de la educacion sobre lwage.
+
+Esto indica que el retorno económico de completar un nivel educativo cambia significativamente dependiendo de qué nivel se está comparando. Por ejemplo, pasar de primario completo a secundario completo parece tener un retorno mayor que otros niveles, sugiriendo que las personas que completan el secundario pueden obtener un salario significativamente más alto que aquellos que solo completan el primario.
+
+Los coeficientes para secudario incompleto, completo y universitario incompleto y completo, son todos significativos, en especial el 4 (secundario completo), lo que respalda la idea de que esos niveles educativos tienen un impacto positivo y relevante en los salarios.
+Al tener un p-valor alto, *Sin instruccion* no es significativo, por lo que aun que el coeficiente sea alto no podemos sacar concluciones.
+
+La variación en los coeficientes y su significancia sugiere que el impacto de la educación sobre los salarios no es lineal. Esto es consistente con la idea de que ciertos niveles de educación (como completar la secundaria o la educación superior) pueden ofrecer ventajas salariales más significativas que simplemente tener un año más de educación.
+
+```{r}
+anova(reg1,reg2)
 ```
 
-### Intervalo de confianza de beta1 anios_ed 
+anova para ver si as.factor(nivel) es mas significativo 
+
+visualizacion 
+
+### Intervalo de confianza de $\beta_1$ (anios_ed) 
 
 ```{r}
-confint(reg1)[2,] 
-```
+coef_df <- data.frame(estimate = coef(reg1)["anios_edu"], confint_lower = confint(reg1)["anios_edu", 1], confint_upper = confint(reg1)["anios_edu", 2])
 
-```{r}
-coef_df <- data.frame(estimate = coef(reg1)["anios_educacion"], confint_lower = confint(reg1)["anios_educacion", 1], confint_upper = confint(reg1)["anios_educacion", 2])
-
-ggplot(coef_df, aes(x = "anios_educacion", y = estimate)) +
+ggplot(coef_df, aes(x = "anios_edu", y = estimate)) +
   geom_point() +
   geom_errorbar(aes(ymin = confint_lower, ymax = confint_upper), width = 0.2) +
   labs(title = "Intervalo de confianza de Años de educación", y = "Coeficiente (Años de educación)")
-
+print(confint(reg1)[2,] )
 ```
 
-### 1.b.
+### b.
 
 El primer cambio respecto al modelo previamente evaluado es que al tener la variable CH06 (edad) codificada con dummys, hace que la matriz de disenio no pueda invertise para luego hacer la regresion por cuantiles, por lo tanto opte por quitar esta variable y obtuve estos resultados:
 
 ```{r}
-regq1 <- rq(log(P21) ~ anios_educacion + exp_pot + exp_pot_2 + as.factor(AGLOMERADO) + as.factor(CH07),data=base2,tau = 1:9/10,ci = FALSE)
+regq1 <- rq(log(wage)~ anios_edu + exp_pot + exp_pot_2 + as.factor(ubicacion) + as.factor(est_civil),data=base1,tau = 1:9/10,ci = FALSE)
 summregq1 <- summary(regq1,se="ker")
 plot(summregq1,parm=2,main ="Coeficientes: Años de educación",xlab ="tau's",ylab = "coef ") # con param =2 le decimos que queremos el grafico de valores e intervalos de confianza de años de educacion. 
 ```
@@ -104,10 +157,17 @@ A medida que τ se aproxima a 0.5 (mediana de la distribución), el coeficiente 
 Finalmente, para los cuantiles altos (τ cercanos a 0.9), el coeficiente de años_ed vuelve a aumentar, lo que sugiere que, para aquellos con ingresos más altos, la educación sigue siendo un factor determinante. Esto podría reflejar que en los niveles más altos de la distribución de ingresos, los años de educación siguen siendo cruciales para alcanzar los ingresos más elevados, probablemente debido a la acumulación de capital humano especializado o credenciales educativas superiores.
 
 Yendo a la pregunta del 1.b
-Para los individuos en los cuantiles bajos, un año adicional de educación tiene un impacto significativo en el aumento de los ingresos, lo que sugiere que la educación es una vía importante para mejorar su situación económica. Esto puede deberse a que un año más de formación amplía sus oportunidades laborales y su potencial de ingresos de manera considerable.
-De manera similar, para los individuos en los cuantiles altos de la distribución (τ cercanos a 0.9), la educación sigue siendo un factor determinante para acceder a los ingresos más elevados. En este grupo, la educación, posiblemente en forma de títulos avanzados o especialización, tiene un impacto considerable en aumentar aún más sus ya altos ingresos.
+Para los individuos en los cuantiles bajos y altos, un año adicional de educación tiene un impacto significativo en el aumento de los ingresos, lo que sugiere que la educación es una vía importante para mejorar su situación económica. Esto puede deberse a que un año más de formación amplía sus oportunidades laborales y su potencial de ingresos de manera considerable.
 
-La comparacion grafica que veo es que al usar el modelo de regresion lineal estamos calculando la media de la log de los ingresos y estamos sesgados sobre la interpretacion del coeficiente, y como en este modelo no presenta dicho sesgo, podemos dar mas interpretabilidad del mismo.
+La comparacion grafica que veo es que al usar el modelo de regresion lineal estamos calculando la media de la log de los ingresos y no estamos puediendo dale demaciada interpretabilidad al coeficiente, y como en este modelo no presenta este problema, podemos dar mas interpretabilidad.
+
+
+```{r}
+regq1 <- rq(wage~ anios_edu + exp_pot + exp_pot_2 + as.factor(ubicacion) + as.factor(est_civil),data=base1,tau = 1:9/10,ci = FALSE)
+summregq1 <- summary(regq1,se="ker")
+plot(summregq1,parm=2,main ="Coeficientes: Años de educación",xlab ="tau's",ylab = "coef ") # con param =2 le decimos que queremos el grafico de valores e intervalos de confianza de años de educacion. 
+```
+
 
 
 ```{r}
