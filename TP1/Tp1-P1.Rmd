@@ -116,7 +116,7 @@ La variación considerable en los coeficientes de las variables dummie *NIVEL_ED
 Esto indica que el retorno económico de completar un nivel educativo cambia significativamente dependiendo de qué nivel se está comparando. Por ejemplo, pasar de primario completo a secundario completo parece tener un retorno mayor que otros niveles, sugiriendo que las personas que completan el secundario pueden obtener un salario significativamente más alto que aquellos que solo completan el primario.
 
 Los coeficientes para secudario incompleto, completo y universitario incompleto y completo, son todos significativos, en especial el 4 (secundario completo), lo que respalda la idea de que esos niveles educativos tienen un impacto positivo y relevante en los salarios.
-Al tener un p-valor alto, *Sin instruccion* no es significativo, por lo que aun que el coeficiente sea alto no podemos sacar concluciones.
+Por otro, si bien el coeficiente de la categoria *Sin instruccion* es alto en comparacion, no es significativo, por tanto no es influyente para estimar lwage.
 
 La variación en los coeficientes y su significancia sugiere que el impacto de la educación sobre los salarios no es lineal. Esto es consistente con la idea de que ciertos niveles de educación (como completar la secundaria o la educación superior) pueden ofrecer ventajas salariales más significativas que simplemente tener un año más de educación.
 
