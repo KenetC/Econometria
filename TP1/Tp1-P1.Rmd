@@ -7,7 +7,7 @@ Primero cargamos las librerias necesarias:
 ```{r}
 library(quantreg);
 library(readxl); # para leer archivos xml, pero vamos a usar el paquete eph
-#library(eph);
+library(eph);
 library(dplyr);
 library(tidyr)
 library(ggplot2)
@@ -21,8 +21,8 @@ Hacemos las restricciones, y calculamos la variable anios_educacion en funcion d
 Hacemos una limpieza: como quitar los valores de anios_educacion por encima de 100, ya que son valores que provienen de educacion especial o Ns/Nr 
 
 ```{r}
-#base2024 <- get_microdata(year = 2024) # para leer usando el paquete eph 
-base2024 <- read_excel('EPH_usu_1er_Trim_2024_xlsx/usu_individual_T124.xlsx')
+base2024 <- get_microdata(year = 2024) # para leer usando el paquete eph 
+#base2024 <- read_excel('EPH_usu_1er_Trim_2024_xlsx/usu_individual_T124.xlsx')
 
 base <- base2024[base2024$P21>0 &      ## asalariados
                        base2024$CH03 == 01 & ## jefes de hogar
@@ -54,11 +54,34 @@ base1 <- base1[complete.cases(base1[, c("exp_pot")]), ] # nos quitamos los na's.
 base1 <- base1[! (base1$anios_edu > 100),]
 ```
 ```{r}
-hist(log(base1$wage),main = "Histograma lwage",xlab = "log(wage)")
+data1 <- log(base1$wage)
+data2 <- base1$wage
+
+par(mfrow = c(1, 2))
+
+# Graficar el primer histograma
+hist(data1, col = "skyblue", main = "Histograma lwage", xlab = "Valores de lwage", ylab = "Frecuencia")
+
+# Graficar el segundo histograma
+hist(data2, col = "salmon", main = "Histograma wage", xlab = "Valores de wage", ylab = "Frecuencia")
+
+# Resetear la configuración para evitar que afecte otros gráficos
+par(mfrow = c(1, 1))
 ```
 
+Visualmente se observa cierta normalidad en los datos luego de hacer la transformacion a **lwage**, esto no es asi con los valore crudos de **wage**. Mas adelante se hace un analisis tomando en cuenta ambos enfoques con 2 modelos donde se encontrar diferencias. 
+
 ```{r}
-plot(base1$anios_edu, log(base1$wage),xlab= "Años de educación",ylab = "log(Ingresos)")
+par(mfrow = c(1, 2))
+
+# Graficar el primer histograma
+plot(base1$anios_edu, log(base1$wage),xlab= "Años de educación",ylab = "lwage")
+
+# Graficar el segundo histograma
+plot(base1$anios_edu, base1$wage,xlab= "Años de educación",ylab = "wage")
+
+# Resetear la configuración para evitar que afecte otros gráficos
+par(mfrow = c(1, 1))
 ```
 
 ### Realizamos el modelo lineal 
@@ -87,28 +110,34 @@ coef_reg2 <- coef(summ_reg2)
 coef_interes_reg1 <- coef_reg1[c("anios_edu", "exp_pot"), ]
 coef_interes_reg2 <- coef_reg2[grep("NIVEL_ED", rownames(coef_reg2)), ] 
 ```
+
+
 ```{r}
-x <- c("Primario completo","Secundario incompleto","Secundario completo","Universitario incompleto","Universitario completo","Sin instruccion")
+x <- c("Primario completo","Secundario incompleto","Secundario completo",
+       "Universitario incompleto","Universitario completo","Sin instruccion")
 y <- coef_interes_reg2[,1]
 pv <- coef_interes_reg2[,4]
+
 # Crear el gráfico base
 plot(1:length(x), y, type = "b", pch = 19, col = "blue", xaxt = "n", 
      xlab = "", ylab = "Coeficiente estimado", 
      xlim = c(0, length(x) + 1),
      main = "Efecto del Nivel Educativo sobre lwage")
 
-# Añadir las etiquetas del eje X
-axis(1, at = 1:length(x), labels = x, las = 2)
-
 # Añadir una línea horizontal en y = 0 para referencia
 abline(h = 0, col = "red", lty = 2)
+
+# Añadir las etiquetas del eje X inclinadas
+axis(1, at = 1:length(x), labels = FALSE)  # Ocultar etiquetas predeterminadas
+text(1:length(x), par("usr")[3] - 0.05,  # Ajuste para desplazar las etiquetas
+     labels = x, srt = 45, adj = 1, xpd = TRUE, cex = 0.8)
 
 # Filtrar los valores válidos para evitar NA en los p-valores
 valid_indices <- which(!is.na(y))
 
 # Añadir los p-valores junto a sus respectivos puntos en el gráfico
 text(valid_indices, y[valid_indices], 
-     labels = paste("p-valor",format(pv[valid_indices], digits = 2)), 
+     labels = paste("p-valor", format(pv[valid_indices], digits = 2)), 
      pos = 4, cex = 0.8, col = "darkgreen")
 ```
 La variación considerable en los coeficientes de las variables dummie *NIVEL_ED* sugiere que el efecto en el logaritmo de los salarios (*log(wage)*) de cada nivel educativo no es constante. Es decir parece haber un efecto no lineal de la educacion sobre lwage.
@@ -123,10 +152,7 @@ La variación en los coeficientes y su significancia sugiere que el impacto de l
 ```{r}
 anova(reg1,reg2)
 ```
-
-anova para ver si as.factor(nivel) es mas significativo 
-
-visualizacion 
+La prueba **ANOVA** de ambos modelos, dio un p-valor menor a 0.05, suponiendo verdaderas las hipotesis necesaria de *ANOVA*, tenemos que cuando controlamos por las variables control (valga la redundancia) el nivel educativo maximo alcanzado como variable dummie de cada persona resulta significativo, contra la variable continua. Por tanto esto sugiere un efecto no lineal de la educacion sobre lwage.
 
 ### Intervalo de confianza de $\beta_1$ (anios_ed) 
 
@@ -168,7 +194,9 @@ summregq1 <- summary(regq1,se="ker")
 plot(summregq1,parm=2,main ="Coeficientes: Años de educación",xlab ="tau's",ylab = "coef ") # con param =2 le decimos que queremos el grafico de valores e intervalos de confianza de años de educacion. 
 ```
 
+Para el caso de un Modelo, con la variable dependiente **wage**, se obtuvo que el coeficiente siempre crece en funcion de $\tau$ pareciera ser de manera exponencial, concluimos que el efecto marginal de los anios de educacion sera creciente en funcion de los ingresos de las personas. 
 
+Este cambio en el analisis, se debe al cambio del modelo, en termino de la variable dependiente al hacer el cambio de escala 
 
 ```{r}
 summregq2 <- summary(regq1,se="boot",R=100)
@@ -180,4 +208,4 @@ summregq3 <- summary(regq1,se="iid")
 plot(summregq3,parm=2,main ="Coeficientes: Años de educación",xlab ="tau's",ylab = "coef ")
 ```
 
-Habia dicidido no mostrar con los otros metodos (iid boot) por que no vi cambios significativos.w
+Habia dicidido no mostrar con los otros metodos (iid boot) por que no vi cambios significativos.
