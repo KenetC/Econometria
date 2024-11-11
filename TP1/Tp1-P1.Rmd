@@ -1,61 +1,38 @@
 ---
-title: "Trabajo Practico"
+title: "TP 1era Pregunta"
 output: html_notebook
 ---
 Primero cargamos las librerias necesarias: 
 
 ```{r}
 library(quantreg);
-library(readxl); # para leer archivos xml, pero vamos a usar el paquete eph
+#library(readxl); # para leer archivos xml, pero vamos a usar el paquete eph
 library(eph);
 library(dplyr);
 library(tidyr)
 library(ggplot2)
+source("funciones.R")
 ```
-# Pregunta 1
 
 ### a. 
 
-Hacemos las restricciones, y calculamos la variable anios_educacion en funcion de CH14 (ultimo anio de aprobacion), luego lo mismo para experiencia potencial y su cuadrado. 
+Realizamos las restricciones, y calculamos la variable anios_educacion en función de CH14 (último año de aprobación), luego lo mismo para experiencia potencial y su cuadrado.
 
-Hacemos una limpieza: como quitar los valores de anios_educacion por encima de 100, ya que son valores que provienen de educacion especial o Ns/Nr 
+[1] Hacemos una limpieza: cómo quitar los valores de anios_educacion por encima de 100, ya que son valores que provienen de educacion especial o Ns/Nr  
 
 ```{r}
-base2024 <- get_microdata(year = 2024) # para leer usando el paquete eph 
+variables = c("P21","AGLOMERADO","CH07","CH06","CH03","CH04","CH13","CH12","CH14")
+
+base24   <- get_microdata(year = 2024, period = 1, type = "individual",destfile="EPH_2024_1_individual.zip",vars = variables) # para leer usando el paquete eph 
 #base2024 <- read_excel('EPH_usu_1er_Trim_2024_xlsx/usu_individual_T124.xlsx')
 
-base <- base2024[base2024$P21>0 &      ## asalariados
-                       base2024$CH03 == 01 & ## jefes de hogar
-                       base2024$CH04 == 1 &  ## varones
-                       25 <= base2024$CH06 & ## edades
-                       base2024$CH06 <= 65,]
-
-# renombramos las variables que usamos, para mas claridad
-base <-base %>% 
-        rename(wage = P21,  ubicacion = AGLOMERADO, est_civil = CH07, edad = CH06)
-
-# calculamos anios de educacion (anios_edu), experiencia potencial (exp_pot)
-anios_prev <- c(0, 0, 6, 6, 9, 12, 12, 18)
-anios_post <- c(0, 6, 9, 12, 12, 15, 18, 22)
-
-base1 <- base %>%
-  mutate(
-    # Asignar el número de años en base al nivel de educación y condición de finalización
-    anios_edu = ifelse(CH13 == 1,
-                      anios_post[CH12 + 1],  # +1 para ajustar al índice en R
-                      anios_prev[CH12 + 1] + as.numeric(CH14)),
-    
-    # Calcular la experiencia potencial y su cuadrado
-    exp_pot = edad - anios_edu - 6,
-    exp_pot_2 = exp_pot^2
-  )
-
-base1 <- base1[complete.cases(base1[, c("exp_pot")]), ] # nos quitamos los na's.
-base1 <- base1[! (base1$anios_edu > 100),]
+base24 <- f_restricciones(base24)
 ```
+Realizamos histogramas para 
+
 ```{r}
-data1 <- log(base1$wage)
-data2 <- base1$wage
+data1 <- log(base24$wage)
+data2 <- base24$wage
 
 par(mfrow = c(1, 2))
 
@@ -69,26 +46,32 @@ hist(data2, col = "salmon", main = "Histograma wage", xlab = "Valores de wage", 
 par(mfrow = c(1, 1))
 ```
 
-Visualmente se observa cierta normalidad en los datos luego de hacer la transformacion a **lwage**, esto no es asi con los valore crudos de **wage**. Mas adelante se hace un analisis tomando en cuenta ambos enfoques con 2 modelos donde se encontrar diferencias. 
+Visualmente en los valores de lwage (**log(wage)**) se observa cierta normalidad, esto no es así con los valores crudos (**wage**). Más adelante se hace un análisis tomando en cuenta ambos enfoques con 2 modelos donde se encuentran diferencias.
 
 ```{r}
 par(mfrow = c(1, 2))
 
 # Graficar el primer histograma
-plot(base1$anios_edu, log(base1$wage),xlab= "Años de educación",ylab = "lwage")
+# plot(base1$anios_edu, log(base1$wage),xlab= "Años de educación",ylab = "lwage")
+ggplot(base24, aes(x = as.factor(anios_edu), y = log(wage))) +
+  geom_violin(fill = "lightblue", color = "black") +
+  labs(x = "Años de Educación", y = "Logaritmo del Salario (lwage)", title = "Distribución de lwage según Años de Educación") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 # Graficar el segundo histograma
-plot(base1$anios_edu, base1$wage,xlab= "Años de educación",ylab = "wage")
+#plot(base1$anios_edu, base1$wage,xlab= "Años de educación",ylab = "wage")
+ggplot(base24, aes(x = as.factor(anios_edu), y = wage)) +
+  geom_violin(fill = "lightblue", color = "black") +
+  labs(x = "Años de Educación", y = "Salario (wage)", title = "Distribución de wage según Años de Educación") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 # Resetear la configuración para evitar que afecte otros gráficos
 par(mfrow = c(1, 1))
 ```
 
-### Realizamos el modelo lineal 
-
-AGLOMERADO -> ubicacion 
-CH07 -> estado civil 
-CH06 -> edad 
+### Modelo lineal 
 
 ##### Modelo 1 
 $$  log(wage) = \text{anios_ed} + \text{exp_pot} + \text{exp_pot}^2 + ubicacion (dummie) + \text{estado_civil} + edad $$
@@ -96,8 +79,8 @@ $$  log(wage) = \text{anios_ed} + \text{exp_pot} + \text{exp_pot}^2 + ubicacion 
 ##### Modelo 2
 $$  log(wage) = educacion (dummie) + \text{exp_pot} + \text{exp_pot}^2 + ubicacion (dummie) + \text{estado_civil} + edad $$
 ```{r}
-reg1 <- lm(log(wage)~ anios_edu + exp_pot + exp_pot_2 + edad + as.factor(ubicacion) + as.factor(est_civil), data=base1)
-reg2 <- lm(log(wage)~ as.factor(NIVEL_ED) + exp_pot + exp_pot_2 + edad + as.factor(ubicacion) + as.factor(est_civil), data=base1)
+reg1 <- lm(log(wage)~ anios_edu + exp_pot + exp_pot_2 + edad + as.factor(ubicacion) + as.factor(est_civil), data=base24)
+reg2 <- lm(log(wage)~ as.factor(NIVEL_ED) + exp_pot + exp_pot_2 + edad + as.factor(ubicacion) + as.factor(est_civil), data=base24)
 
 summ_reg1 <- summary(reg1)
 summ_reg2 <- summary(reg2)
@@ -140,19 +123,21 @@ text(valid_indices, y[valid_indices],
      labels = paste("p-valor", format(pv[valid_indices], digits = 2)), 
      pos = 4, cex = 0.8, col = "darkgreen")
 ```
-La variación considerable en los coeficientes de las variables dummie *NIVEL_ED* sugiere que el efecto en el logaritmo de los salarios (*log(wage)*) de cada nivel educativo no es constante. Es decir parece haber un efecto no lineal de la educacion sobre lwage.
+La variación es considerable en los coeficientes de las variables dummie **NIVEL_ED**, sugiere que el efecto en **log(wage)** de cada nivel educativo no es constante. Es decir, parece haber un efecto no lineal de la educación sobre lwage.
 
-Esto indica que el retorno económico de completar un nivel educativo cambia significativamente dependiendo de qué nivel se está comparando. Por ejemplo, pasar de primario completo a secundario completo parece tener un retorno mayor que otros niveles, sugiriendo que las personas que completan el secundario pueden obtener un salario significativamente más alto que aquellos que solo completan el primario.
+Esto indica que el retorno económico de completar un nivel educativo cambia significativamente dependiendo de qué nivel se está comparando. Por ejemplo, pasar de primario completo a secundario completo parece tener un retorno mayor que otros niveles, sugiriendo que las personas que completan el secundario pueden obtener un salario significativamente más alto que aquellos que sólo completan el primario.
 
-Los coeficientes para secudario incompleto, completo y universitario incompleto y completo, son todos significativos, en especial el 4 (secundario completo), lo que respalda la idea de que esos niveles educativos tienen un impacto positivo y relevante en los salarios.
-Por otro, si bien el coeficiente de la categoria *Sin instruccion* es alto en comparacion, no es significativo, por tanto no es influyente para estimar lwage.
+Los coeficientes para secundario incompleto, completo y universitario incompleto y completo, son todos significativos, en especial el 4 (secundario completo), lo que respalda la idea de que esos niveles educativos tienen un impacto positivo y relevante en los salarios.
+Por otro lado, si bien el coeficiente de la categoría **Sin instruccion** es alto en comparación, no es significativo, por tanto no es influyente para estimar lwage.
 
 La variación en los coeficientes y su significancia sugiere que el impacto de la educación sobre los salarios no es lineal. Esto es consistente con la idea de que ciertos niveles de educación (como completar la secundaria o la educación superior) pueden ofrecer ventajas salariales más significativas que simplemente tener un año más de educación.
+
+### ANOVA 
 
 ```{r}
 anova(reg1,reg2)
 ```
-La prueba **ANOVA** de ambos modelos, dio un p-valor menor a 0.05, suponiendo verdaderas las hipotesis necesaria de *ANOVA*, tenemos que cuando controlamos por las variables control (valga la redundancia) el nivel educativo maximo alcanzado como variable dummie de cada persona resulta significativo, contra la variable continua. Por tanto esto sugiere un efecto no lineal de la educacion sobre lwage.
+La prueba *ANOVA* de ambos modelos, dio un p-valor menor a 0.05, suponiendo verdaderas las hipótesis necesaria de *ANOVA*, tenemos que cuando controlamos por las variables control (valga la redundancia) el nivel educativo máximo alcanzado como variable dummie de cada persona resulta significativo, contra la variable continua. Por tanto esto sugiere un efecto no lineal de la educación sobre lwage.
 
 ### Intervalo de confianza de $\beta_1$ (anios_ed) 
 
@@ -168,10 +153,10 @@ print(confint(reg1)[2,] )
 
 ### b.
 
-El primer cambio respecto al modelo previamente evaluado es que al tener la variable CH06 (edad) codificada con dummys, hace que la matriz de disenio no pueda invertise para luego hacer la regresion por cuantiles, por lo tanto opte por quitar esta variable y obtuve estos resultados:
+El primer cambio respecto al modelo previamente evaluado es que al tener la variable **edad** codificada con dummies, hace que la matriz de diseño no pueda invertirse para luego hacer la regresión por cuantiles, por lo tanto opte por quitar esta variable y obtuve estos resultados:
 
 ```{r}
-regq1 <- rq(log(wage)~ anios_edu + exp_pot + exp_pot_2 + as.factor(ubicacion) + as.factor(est_civil),data=base1,tau = 1:9/10,ci = FALSE)
+regq1 <- rq(log(wage)~ anios_edu + exp_pot + exp_pot_2 + as.factor(ubicacion) + as.factor(est_civil),data=base24,tau = 1:9/10,ci = FALSE)
 summregq1 <- summary(regq1,se="ker")
 plot(summregq1,parm=2,main ="Coeficientes: Años de educación",xlab ="tau's",ylab = "coef ") # con param =2 le decimos que queremos el grafico de valores e intervalos de confianza de años de educacion. 
 ```
@@ -189,14 +174,14 @@ La comparacion grafica que veo es que al usar el modelo de regresion lineal esta
 
 
 ```{r}
-regq1 <- rq(wage~ anios_edu + exp_pot + exp_pot_2 + as.factor(ubicacion) + as.factor(est_civil),data=base1,tau = 1:9/10,ci = FALSE)
+regq1 <- rq(wage~ anios_edu + exp_pot + exp_pot_2 + as.factor(ubicacion) + as.factor(est_civil),data=base24,tau = 1:9/10,ci = FALSE)
 summregq1 <- summary(regq1,se="ker")
 plot(summregq1,parm=2,main ="Coeficientes: Años de educación",xlab ="tau's",ylab = "coef ") # con param =2 le decimos que queremos el grafico de valores e intervalos de confianza de años de educacion. 
 ```
 
-Para el caso de un Modelo, con la variable dependiente **wage**, se obtuvo que el coeficiente siempre crece en funcion de $\tau$ pareciera ser de manera exponencial, concluimos que el efecto marginal de los anios de educacion sera creciente en funcion de los ingresos de las personas. 
+Para el caso del Modelo 2, se obtuvo que el coeficiente crece en funcion de **$\tau$**, pareciera ser de manera exponencial, concluimos que el efecto marginal de los anios de educacion sobre los ingresos, es creciente.
 
-Este cambio en el analisis, se debe al cambio del modelo, en termino de la variable dependiente al hacer el cambio de escala 
+Este cambio en el analisis, quizas se deba a la variabilidad de la distribucion de **wage** ya que para el otro modelo era homocedastico, sin embargo para este no lo es.
 
 ```{r}
 summregq2 <- summary(regq1,se="boot",R=100)
