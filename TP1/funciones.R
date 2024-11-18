@@ -1,6 +1,7 @@
 f_restricciones <- function(df){
+  df <- df$microdata[[1]]
   # renombramos las variables que usamos, para mas claridad
-  df <-df %>% 
+  df <- df %>% 
         rename(wage = P21,  ubicacion = AGLOMERADO, est_civil = CH07, edad = CH06)
   
   df <- df %>%

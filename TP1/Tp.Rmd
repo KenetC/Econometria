@@ -1,8 +1,12 @@
 ---
-title: "TP"
-output: html_document
+title: "Trabajo Practico"
+output:
+  html_document: default
+  pdf_document: default
 date: "2024-11-17"
 ---
+
+Cargamos las librerías
 
 ```{r}
 library(quantreg);
@@ -13,6 +17,8 @@ library(ggplot2)
 library(dineq)
 library(ineq)
 ```
+
+Definimos algunas funciones que vamos a usar
 
 ```{r}
 f_restricciones <- function(df){
@@ -88,16 +94,13 @@ base23_4 <- f_restricciones(base23_4$microdata[[1]])
 Realizamos histogramas para 
 
 ```{r}
-data1 <- log(base24$wage)
-data2 <- base24$wage
-
 par(mfrow = c(1, 2))
 
 # Graficar el primer histograma
-hist(data1, col = "skyblue", main = "Histograma lwage", xlab = "Valores de lwage", ylab = "Frecuencia")
+hist(log(base24$wage), col = "skyblue", main = "Histograma lwage", xlab = "Valores de lwage", ylab = "Frecuencia")
 
 # Graficar el segundo histograma
-hist(data2, col = "salmon", main = "Histograma wage", xlab = "Valores de wage", ylab = "Frecuencia")
+hist(base24$wage, col = "salmon", main = "Histograma wage", xlab = "Valores de wage", ylab = "Frecuencia")
 
 # Resetear la configuración para evitar que afecte otros gráficos
 par(mfrow = c(1, 1))
@@ -131,10 +134,10 @@ par(mfrow = c(1, 1))
 ### Modelo lineal 
 
 ##### Modelo 1 
-$$  log(wage) = \text{anios_ed} + \text{exp_pot} + \text{exp_pot}^2 + ubicacion (dummie) + \text{estado_civil} + edad $$
+$$ \text{log(wage)} = \text{anios_ed} + \text{exp_pot} + \text{exp_pot}^2 + \text{ubicacion (dummie)} + \text{estado_civil} + \text{edad} $$
 
 ##### Modelo 2
-$$  log(wage) = educacion (dummie) + \text{exp_pot} + \text{exp_pot}^2 + ubicacion (dummie) + \text{estado_civil} + edad $$
+$$ \text{log(wage)} = \text{educacion (dummie)} + \text{exp_pot} + \text{exp_pot}^2 + \text{ubicacion (dummie)} + \text{estado_civil} + \text{edad} $$
 ```{r}
 reg1 <- lm(log(wage)~ anios_edu + exp_pot + exp_pot_2 + edad + as.factor(ubicacion) + as.factor(est_civil), data=base24)
 reg2 <- lm(log(wage)~ as.factor(NIVEL_ED) + exp_pot + exp_pot_2 + edad + as.factor(ubicacion) + as.factor(est_civil), data=base24)
@@ -180,6 +183,7 @@ text(valid_indices, y[valid_indices],
      labels = paste("p-valor", format(pv[valid_indices], digits = 2)), 
      pos = 4, cex = 0.8, col = "darkgreen")
 ```
+
 La variación es considerable en los coeficientes de las variables dummie **NIVEL_ED**, sugiere que el efecto en **log(wage)** de cada nivel educativo no es constante. Es decir, parece haber un efecto no lineal de la educación sobre lwage.
 
 Esto indica que el retorno económico de completar un nivel educativo cambia significativamente dependiendo de qué nivel se está comparando. Por ejemplo, pasar de primario completo a secundario completo parece tener un retorno mayor que otros niveles, sugiriendo que las personas que completan el secundario pueden obtener un salario significativamente más alto que aquellos que sólo completan el primario.
@@ -213,8 +217,8 @@ print(confint(reg1)[2,] )
 El primer cambio respecto al modelo previamente evaluado es que al tener la variable **edad** codificada con dummies, hace que la matriz de diseño no pueda invertirse para luego hacer la regresión por cuantiles, por lo tanto opte por quitar esta variable y obtuve estos resultados:
 
 ```{r}
-regq1 <- rq(log(wage)~ anios_edu + exp_pot + exp_pot_2 + as.factor(ubicacion) + as.factor(est_civil),data=base24,tau = 1:9/10,ci = FALSE)
-summregq1 <- summary(regq1,se="ker")
+regq1_lwage <- rq(log(wage)~ anios_edu + exp_pot + exp_pot_2 + as.factor(ubicacion) + as.factor(est_civil),data=base24,tau = 1:9/10,ci = FALSE)
+summregq1 <- summary(regq1_lwage,se="ker")
 plot(summregq1,parm=2,main ="Coeficientes: Años de educación",xlab ="tau's",ylab = "coef ") # con param =2 le decimos que queremos el grafico de valores e intervalos de confianza de años de educacion. 
 ```
 
@@ -241,12 +245,12 @@ Para el caso del Modelo 2, se obtuvo que el coeficiente crece en funcion de **$\
 Este cambio en el analisis, quizas se deba a la variabilidad de la distribucion de **wage** ya que para el otro modelo era homocedastico, sin embargo para este no lo es.
 
 ```{r}
-summregq2 <- summary(regq1,se="boot",R=100)
+summregq2 <- summary(regq1_lwage,se="boot",R=100)
 plot(summregq2,parm=2,main ="Coeficientes: Años de educación",xlab ="tau's",ylab = "coef ")
 ```
 
 ```{r}
-summregq3 <- summary(regq1,se="iid")
+summregq3 <- summary(regq1_lwage,se="iid")
 plot(summregq3,parm=2,main ="Coeficientes: Años de educación",xlab ="tau's",ylab = "coef ")
 ```
 
@@ -430,7 +434,7 @@ Se observan características similares a las anteriores, en tanto concluimos que
 
 ```{r}
 model_24 <- lm(log(wage) ~ anios_edu + exp_pot + exp_pot_2 + as.factor(est_civil),data = base24)
-model_23 <- lm(log(wage) ~ anios_edu + exp_pot + exp_pot_2 + as.factor(est_civil),data = base23)
+model_23 <- lm(log(wage) ~ anios_edu + exp_pot + exp_pot_2 + as.factor(est_civil),data = base23_1)
 
 coef_24 <- coef(model_24)
 coef_23 <- coef(model_23)
@@ -438,7 +442,7 @@ coef_23 <- coef(model_23)
 media_vars_24 <- colMeans(model.matrix(model_24))
 media_vars_23 <- colMeans(model.matrix(model_23))
 
-diff_total <- mean(log(base23$wage)) - mean(log(base24$wage))
+diff_total <- mean(log(base23_1$wage)) - mean(log(base24$wage))
 
 explained <- sum((media_vars_23 - media_vars_24) * coef_23)
 unexplained <- sum(media_vars_24 * (coef_23 - coef_24))
@@ -481,18 +485,18 @@ opt_alpha_v1 <- function(y,d,x,z, N = 10){
   return(coef_z[which.min(abs(coef_z[,2])),1])
 }
 
-est_alpha_v2 <- function(y,d,x,z,tau = 0.5){
+est_alpha_v2 <- function(y,d,x,z){
   # funcion de perdida a optimizar 
-  ivqr_loss <- function(alpha, y, d, x, z, tau = 0.5) {
-    resid <- y - alpha * d
-    rq_model <- rq(resid ~ x + z, tau = tau)
-    return(sum(abs(rq_model$residuals)))
+  ivqr_loss <- function(alpha, y, d, x, z) {
+    resid <- 
+    rq_model <- rq(y-alpha*d~ x + z)
+    return(sum(abs(rq_model$coef[3])))
   }
   
   # Optimización para encontrar alpha
   optim_res <- optim(par = 0, 
                      fn = ivqr_loss, 
-                     y = y, d = d, x = x, z = z, tau = tau,
+                     y = y, d = d, x = x, z = z, 
                      method = "BFGS")
   return(optim_res$par) 
 }

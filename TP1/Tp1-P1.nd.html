@@ -1755,12 +1755,31 @@ display: none;
 <p>Primero cargamos las librerias necesarias:</p>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubGlicmFyeShxdWFudHJlZyk7XG4jbGlicmFyeShyZWFkeGwpOyAjIHBhcmEgbGVlciBhcmNoaXZvcyB4bWwsIHBlcm8gdmFtb3MgYSB1c2FyIGVsIHBhcXVldGUgZXBoXG5saWJyYXJ5KGVwaCk7XG5saWJyYXJ5KGRwbHlyKTtcbmxpYnJhcnkodGlkeXIpXG5saWJyYXJ5KGdncGxvdDIpXG5zb3VyY2UoXCJmdW5jaW9uZXMuUlwiKVxuYGBgIn0= -->
-<pre class="r"><code>library(quantreg);
-#library(readxl); # para leer archivos xml, pero vamos a usar el paquete eph
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubGlicmFyeShxdWFudHJlZyk7XG5gYGAifQ== -->
+<pre class="r"><code>library(quantreg);</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-output-begin eyJkYXRhIjoiTG9hZGluZyByZXF1aXJlZCBwYWNrYWdlOiBTcGFyc2VNXG4ifQ== -->
+<pre><code>Loading required package: SparseM</code></pre>
+<!-- rnb-output-end -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuI2xpYnJhcnkocmVhZHhsKTsgIyBwYXJhIGxlZXIgYXJjaGl2b3MgeG1sLCBwZXJvIHZhbW9zIGEgdXNhciBlbCBwYXF1ZXRlIGVwaFxubGlicmFyeShlcGgpO1xubGlicmFyeShkcGx5cik7XG5gYGAifQ== -->
+<pre class="r"><code>#library(readxl); # para leer archivos xml, pero vamos a usar el paquete eph
 library(eph);
-library(dplyr);
-library(tidyr)
+library(dplyr);</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-output-begin eyJkYXRhIjoiXG5BdHRhY2hpbmcgcGFja2FnZTog4oCYZHBseXLigJlcblxuVGhlIGZvbGxvd2luZyBvYmplY3RzIGFyZSBtYXNrZWQgZnJvbSDigJhwYWNrYWdlOnN0YXRz4oCZOlxuXG4gICAgZmlsdGVyLCBsYWdcblxuVGhlIGZvbGxvd2luZyBvYmplY3RzIGFyZSBtYXNrZWQgZnJvbSDigJhwYWNrYWdlOmJhc2XigJk6XG5cbiAgICBpbnRlcnNlY3QsIHNldGRpZmYsIHNldGVxdWFsLCB1bmlvblxuIn0= -->
+<pre><code>
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union</code></pre>
+<!-- rnb-output-end -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubGlicmFyeSh0aWR5cilcbmxpYnJhcnkoZ2dwbG90MilcbnNvdXJjZShcImZ1bmNpb25lcy5SXCIpXG5gYGAifQ== -->
+<pre class="r"><code>library(tidyr)
 library(ggplot2)
 source(&quot;funciones.R&quot;)</code></pre>
 <!-- rnb-source-end -->
@@ -1776,16 +1795,11 @@ por encima de 100, ya que son valores que provienen de educacion
 especial o Ns/Nr </p>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuYmFzZTI0IDwtIGdldF9taWNyb2RhdGEoeWVhciA9IDIwMjQscGVyaW9kID0gMSwgdHlwZSA9IFwiaW5kaXZpZHVhbFwiKSAjIHBhcmEgbGVlciB1c2FuZG8gZWwgcGFxdWV0ZSBlcGggXG5gYGAifQ== -->
-<pre class="r"><code>base24 &lt;- get_microdata(year = 2024,period = 1, type = &quot;individual&quot;) # para leer usando el paquete eph </code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoidHJ5aW5nIFVSTCAnaHR0cHM6Ly93d3cuaW5kZWMuZ29iLmFyL2Z0cC9jdWFkcm9zL21lbnVzdXBlcmlvci9lcGgvRVBIX3VzdV8xX1RyaW1fMjAyNF90eHQuemlwJ1xuQ29udGVudCB0eXBlICdhcHBsaWNhdGlvbi94LXppcC1jb21wcmVzc2VkJyBsZW5ndGggMjYyOTkxNCBieXRlcyAoMi41IE1CKVxuZG93bmxvYWRlZCAyLjUgTUJcbiJ9 -->
-<pre><code>trying URL &#39;https://www.indec.gob.ar/ftp/cuadros/menusuperior/eph/EPH_usu_1_Trim_2024_txt.zip&#39;
-Content type &#39;application/x-zip-compressed&#39; length 2629914 bytes (2.5 MB)
-downloaded 2.5 MB</code></pre>
-<!-- rnb-output-end -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuI2Jhc2UyMDI0IDwtIHJlYWRfZXhjZWwoJ0VQSF91c3VfMWVyX1RyaW1fMjAyNF94bHN4L3VzdV9pbmRpdmlkdWFsX1QxMjQueGxzeCcpXG5cbmJhc2UyNCA8LSBmX3Jlc3RyaWNjaW9uZXMoYmFzZTI0KVxuYGBgIn0= -->
-<pre class="r"><code>#base2024 &lt;- read_excel(&#39;EPH_usu_1er_Trim_2024_xlsx/usu_individual_T124.xlsx&#39;)
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxudmFyaWFibGVzID0gYyhcIlAyMVwiLFwiQUdMT01FUkFET1wiLFwiQ0gwN1wiLFwiQ0gwNlwiLFwiQ0gwM1wiLFwiQ0gwNFwiLFwiQ0gxM1wiLFwiQ0gxMlwiLFwiQ0gxNFwiKVxuXG5iYXNlMjQgICA8LSBnZXRfbWljcm9kYXRhKHllYXIgPSAyMDI0LCBwZXJpb2QgPSAxLCB0eXBlID0gXCJpbmRpdmlkdWFsXCIsZGVzdGZpbGU9XCJFUEhfMjAyNF8xX2luZGl2aWR1YWwuemlwXCIsdmFycyA9IHZhcmlhYmxlcykgIyBwYXJhIGxlZXIgdXNhbmRvIGVsIHBhcXVldGUgZXBoIFxuI2Jhc2UyMDI0IDwtIHJlYWRfZXhjZWwoJ0VQSF91c3VfMWVyX1RyaW1fMjAyNF94bHN4L3VzdV9pbmRpdmlkdWFsX1QxMjQueGxzeCcpXG5cbmJhc2UyNCA8LSBmX3Jlc3RyaWNjaW9uZXMoYmFzZTI0KVxuYGBgIn0= -->
+<pre class="r"><code>variables = c(&quot;P21&quot;,&quot;AGLOMERADO&quot;,&quot;CH07&quot;,&quot;CH06&quot;,&quot;CH03&quot;,&quot;CH04&quot;,&quot;CH13&quot;,&quot;CH12&quot;,&quot;CH14&quot;)
+
+base24   &lt;- get_microdata(year = 2024, period = 1, type = &quot;individual&quot;,destfile=&quot;EPH_2024_1_individual.zip&quot;,vars = variables) # para leer usando el paquete eph 
+#base2024 &lt;- read_excel(&#39;EPH_usu_1er_Trim_2024_xlsx/usu_individual_T124.xlsx&#39;)
 
 base24 &lt;- f_restricciones(base24)</code></pre>
 <!-- rnb-source-end -->
